@@ -1,0 +1,17 @@
+# Virtual environment
+backend/venv/
+
+# Environment variables
+backend/.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# # Node modules
+# frontend/node_modules/
+
+# # OS files
+# .DS_Store
+# Thumbs.db
