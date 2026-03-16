@@ -5,8 +5,17 @@ uvicorn main:app --reload
 http://127.0.0.1:8000/docs for FastAPi auto-generated documentaiton
 """
 
+
+"""
+cd backend
+source venv/bin/activate
+"""
+
+
 # 127.0.0.1 is localhost IP address
 # we are listening on port 8000
+
+
 
 
 
