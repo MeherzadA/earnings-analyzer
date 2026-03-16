@@ -1,6 +1,6 @@
 from defeatbeta_api.data.ticker import Ticker
 
-def fetch_transcript(ticker: str, year: int, quarter: int):
+def fetch_transcript(ticker: str, year: int, quarter: int) -> dict | None:
     try:
         company = Ticker(ticker.upper())
         transcripts = company.earning_call_transcripts()

@@ -1,0 +1,111 @@
+import os
+from google import genai
+from dotenv import load_dotenv
+
+import json
+
+load_dotenv()
+
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+def analyze_transcript(ticker: str, year: int, quarter: int, transcript_text: str) -> dict:
+
+    prompt = f"""
+    You are a professional equity research analyst analyzing an earnings call transcript.
+
+    Company: {ticker}
+    Period: Q{quarter} {year}
+
+    Your task is to analyze the transcript and produce a structured assessment of management tone,
+    key statements, risks, and potential growth opportunities.
+
+    Guidelines:
+    - Base your analysis ONLY on statements explicitly present in the transcript.
+    - Do NOT invent financial data, events, or claims.
+    - Use neutral, professional language similar to an equity research note.
+    - Think step-by-step internally before producing the final JSON output, but DO NOT include your reasoning in the response.
+
+    Definitions:
+
+    Sentiment:
+    The overall tone of management regarding business performance and future outlook.
+
+    Sentiment Score:
+    A number between -1.0 and 1.0 where:
+    - -1.0 = very negative outlook
+    - 0.0 = neutral / balanced
+    - 1.0 = very positive outlook
+
+    Key Claims:
+    Important statements management makes about:
+    - revenue or earnings trends
+    - margins or profitability
+    - strategy or investments
+    - market demand
+    - future guidance
+    - operational performance
+
+    Red Flags:
+    Signals of risk such as:
+    - weakening demand
+    - declining margins
+    - cost pressures
+    - lowered guidance
+    - regulatory risks
+    - operational challenges
+    - vague or uncertain management responses
+
+    Opportunities:
+    Potential positive drivers such as:
+    - strong demand
+    - new product launches
+    - market expansion
+    - margin improvement
+    - cost reductions
+    - strategic partnerships
+    - favorable industry trends
+
+    Return a JSON object with EXACTLY the following schema:
+
+    {{
+        "sentiment": "positive" | "neutral" | "negative",
+        "sentiment_score": number from -1.0 (very negative) to 1.0 (very positive),
+        "summary": "2-3 sentence plain English summary of the call",
+        "key_claims": ["list the most important claims, as many as warranted"],
+        "red_flags": ["list all significant red flags, or empty array if none"],
+        "opportunities": ["list all significant opportunities, or empty array if none"]
+    }}
+
+    Requirements:
+    - Your response MUST be valid JSON.
+    - Do NOT include markdown formatting.
+    - Do NOT include explanations or commentary.
+    - Return ONLY the JSON object.
+
+    Transcript:
+    {transcript_text}
+    """
+    
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+    
+    raw = response.text.strip()
+    
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[1]
+        raw = raw.rsplit("```", 1)[0]
+    
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        return {"error": f"Failed to parse Gemini response: {str(e)}", "raw": raw}
+
+
+if __name__ == "__main__":
+    from transcript import fetch_transcript
+    data = fetch_transcript("AAPL", 2024, 1)
+    result = analyze_transcript("AAPL", 2024, 1, data["content"])
+    import pprint
+    pprint.pprint(result)
