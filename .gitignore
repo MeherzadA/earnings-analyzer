@@ -1,5 +1,5 @@
 # Virtual environment
-backend/venv/
+venv/
 
 # Environment variables
 backend/.env
@@ -9,9 +9,9 @@ __pycache__/
 *.pyc
 *.pyo
 
-# # Node modules
-# frontend/node_modules/
+# Node modules
+frontend/node_modules/
 
-# # OS files
-# .DS_Store
-# Thumbs.db
+# OS files
+.DS_Store
+Thumbs.db
