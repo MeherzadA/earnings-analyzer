@@ -17,12 +17,13 @@ source venv/bin/activate
 
 
 
-
-
-from fastapi import FastAPI, HTTPException
+import json
+from sqlalchemy.orm import Session
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from database import engine
+from database import engine, get_db
 
 import models
 
@@ -36,6 +37,17 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 class AnalyzeRequest(BaseModel):
     ticker: str
     year: int
@@ -47,9 +59,44 @@ def root():
 
 
 @app.post("/analyze")
-def analyze(request: AnalyzeRequest):
+def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
+    # CHECK CACHE: Query for existing transcript with same ticker/year/quarter
+    existing_transcript = db.query(models.Transcript).filter(
+        models.Transcript.ticker == request.ticker.upper(),
+        models.Transcript.year == request.year,
+        models.Transcript.quarter == str(request.quarter)
+    ).first()
     
-    transcript = fetch_transcript(request.ticker, request.year, request.quarter)
+    if existing_transcript:
+        # CACHE HIT: Fetch the existing analysis instead of calling Gemini
+        existing_analysis = db.query(models.Analysis).filter(
+            models.Analysis.transcript_id == existing_transcript.id
+        ).first()
+        
+        if existing_analysis:
+            # Deserialize JSON fields back to lists
+            cached_result = {
+                "sentiment": existing_analysis.sentiment,
+                "sentiment_score": existing_analysis.sentiment_score,
+                "summary": existing_analysis.summary,
+                "key_claims": json.loads(existing_analysis.key_claims),
+                "red_flags": json.loads(existing_analysis.red_flags),
+                "opportunities": json.loads(existing_analysis.opportunities)
+            }
+            
+            return {
+                "ticker": request.ticker.upper(),
+                "year": request.year,
+                "quarter": request.quarter,
+                "analysis": cached_result,
+                "cached": True
+            }
+    
+    # CACHE MISS: Proceed with normal flow (fetch transcript, call Gemini, save to DB)
+    try:
+        transcript = fetch_transcript(request.ticker, request.year, request.quarter)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     
     if not transcript:
         raise HTTPException(status_code=404, detail=f"No transcript found for {request.ticker} Q{request.quarter} {request.year}")
@@ -63,10 +110,48 @@ def analyze(request: AnalyzeRequest):
     
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
+
+    # request.ticker, request.year, request.quarter come from the API request
+    # transcript["content"] is the raw text fetched from defeatbeta
+    db_transcript = models.Transcript(
+        ticker=request.ticker.upper(),
+        quarter=str(request.quarter),
+        year=request.year,
+        raw_text=transcript["content"]
+    )
+    
+    # Stage the transcript to be saved — not written to DB yet
+    db.add(db_transcript)
+    
+    # flush() sends the INSERT to the DB session so Postgres assigns an id
+    # we need that id to link the analysis to this transcript below
+    # without flush(), db_transcript.id would be None
+    db.flush()
+    
+    # Create a new Analysis record linked to the transcript we just saved
+    # result is the dictionary returned by Gemini
+    # lists like key_claims need json.dumps() to convert them to a string for Text columns
+    db_analysis = models.Analysis(
+        transcript_id=db_transcript.id,
+        user_id=None,
+        sentiment=result.get("sentiment"),
+        summary=result.get("summary"),
+        key_claims=json.dumps(result.get("key_claims", [])),
+        red_flags=json.dumps(result.get("red_flags", [])),
+        opportunities=json.dumps(result.get("opportunities", [])),
+        sentiment_score=result.get("sentiment_score")
+    )
+    
+    # Stage the analysis to be saved
+    db.add(db_analysis)
+    
+    # commit() actually writes both the transcript and analysis to the database permanently
+    db.commit()
     
     return {
         "ticker": request.ticker.upper(),
         "year": request.year,
         "quarter": request.quarter,
-        "analysis": result
+        "analysis": result,
+        "cached": False
     }
