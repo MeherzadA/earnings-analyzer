@@ -66,6 +66,8 @@ CREATE TABLE analyses (
     key_claims TEXT,
     red_flags TEXT,
     summary TEXT,
+    sentiment_score FLOAT,
+    opportunities TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
