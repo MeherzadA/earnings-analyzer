@@ -18,4 +18,3 @@ services:
 databases:
   - name: earnings-analyzer-db
     databaseName: earnings_analyzer
-    user: postgres
