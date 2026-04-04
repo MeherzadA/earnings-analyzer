@@ -16,26 +16,95 @@ function SearchBar({ onSubmit, loading }) {
   const [ticker, setTicker] = useState("");
   const [year, setYear] = useState(today.getFullYear());
   const [quarter, setQuarter] = useState(currentQuarter(today));
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (ticker.length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+    try {
+        const [symbolRes, nameRes] = await Promise.all([
+        fetch(`https://financialmodelingprep.com/stable/search-symbol?query=${ticker}&apikey=${import.meta.env.VITE_FMP_API_KEY}`),
+        fetch(`https://financialmodelingprep.com/stable/search-name?query=${ticker}&apikey=${import.meta.env.VITE_FMP_API_KEY}`)
+        ]);
+
+        const [symbolData, nameData] = await Promise.all([
+        symbolRes.json(),
+        nameRes.json()
+        ]);
+
+        const combined = [...(symbolData || []), ...(nameData || [])];
+
+        // Deduplicate by symbol
+        const seen = new Set();
+        const deduped = combined.filter((item) => {
+        if (seen.has(item.symbol)) return false;
+        seen.add(item.symbol);
+        return true;
+        });
+
+        const filtered = deduped.filter((item) =>
+        (item.exchange === "NASDAQ" || item.exchange === "NYSE") &&
+        /^[A-Z]{1,5}$/.test(item.symbol)
+        );
+
+        setSuggestions(filtered.slice(0, 5));
+        setShowSuggestions(true);
+    } catch {
+        setSuggestions([]);
+    }
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [ticker]);
+
+  function handleSelect(item) {
+    setTicker(item.symbol);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  }
 
   function handleSubmit(e) {
     e.preventDefault();
     if (!ticker.trim()) return;
+    setShowSuggestions(false);
     onSubmit({ ticker: ticker.trim(), year: Number(year), quarter: Number(quarter) });
   }
 
   return (
     <form className="search-bar" onSubmit={handleSubmit}>
       <div className="search-fields">
-        <div className="search-field ticker-field">
+        <div className="search-field ticker-field" style={{ position: "relative" }}>
           <label>Ticker</label>
           <input
             type="text"
             placeholder="AAPL"
             value={ticker}
             onChange={(e) => setTicker(e.target.value.toUpperCase())}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             maxLength={10}
             required
           />
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="suggestions">
+              {suggestions.map((item) => (
+                <div
+                  key={item.symbol}
+                  className="suggestion-item"
+                  onMouseDown={() => handleSelect(item)}
+                >
+                  <span className="suggestion-ticker">{item.symbol}</span>
+                  <span className="suggestion-name">{item.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="search-field">
           <label>Year</label>
