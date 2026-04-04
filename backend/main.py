@@ -174,3 +174,36 @@ def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
         "daily_prices": stock_returns.get("daily_prices", []),
         "cached": False
     }
+
+@app.get("/history")
+def get_history(sort: str = "recent", limit: int = 10, db: Session = Depends(get_db)):
+    transcripts = db.query(models.Transcript).order_by(models.Transcript.id.desc()).all()
+    
+    results = []
+    for t in transcripts:
+        analysis = db.query(models.Analysis).filter(
+            models.Analysis.transcript_id == t.id
+        ).first()
+        if analysis:
+            results.append({
+                "ticker": t.ticker,
+                "year": t.year,
+                "quarter": t.quarter,
+                "sentiment": analysis.sentiment,
+                "sentiment_score": analysis.sentiment_score,
+                "summary": analysis.summary,
+                "return_1day": analysis.return_1day,
+                "return_5day": analysis.return_5day,
+            })
+    
+    if sort == "movers":
+        results = [r for r in results if r["return_1day"] is not None]
+        results.sort(key=lambda x: abs(x["return_1day"]), reverse=True)
+    elif sort == "drops":
+        results = [r for r in results if r["return_1day"] is not None]
+        results.sort(key=lambda x: x["return_1day"])
+    elif sort == "gains":
+        results = [r for r in results if r["return_1day"] is not None]
+        results.sort(key=lambda x: x["return_1day"], reverse=True)
+    
+    return {"history": results[:limit], "total": len(results)}

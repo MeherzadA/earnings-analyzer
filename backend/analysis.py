@@ -24,6 +24,8 @@ def analyze_transcript(ticker: str, year: int, quarter: int, transcript_text: st
     - Do NOT invent financial data, events, or claims.
     - Use neutral, professional language similar to an equity research note.
     - Think step-by-step internally before producing the final JSON output, but DO NOT include your reasoning in the response.
+    - Note that earnings calls are often forward-looking and may contain projections, guidance, and management's perspectives on future performance. 
+      Your sentiment score should be calculated critically based on the transcript and do a bit of thought before assigning a score. For example, if management is projecting strong future growth but the current quarter was weak, you might assign a positive sentiment but a moderate score (e.g. 0.5) to reflect the mixed signals. Be objective and consider the overall tone and content of the call when determining sentiment.
 
     Definitions:
 
