@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
-const API_URL = "http://127.0.0.1:8000/analyze";
+const API_URL = "https://earnings-analyzer-er72.onrender.com/analyze";
 
 function currentQuarter(date) {
   const month = date.getMonth() + 1;
@@ -481,7 +481,7 @@ export default function App() {
 }
 
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/history?sort=${sort}&limit=${limit}`)
+    fetch(`https://earnings-analyzer-er72.onrender.com/history?sort=${sort}&limit=${limit}`)
         .then((res) => res.json())
         .then((data) => {
           setHistory(data.history || []);
@@ -504,7 +504,7 @@ export default function App() {
       if (!res.ok) throw new Error(data?.detail || "Request failed");
       setResult(data);
 
-      fetch(`http://127.0.0.1:8000/history?sort=${sort}`)
+      fetch(`https://earnings-analyzer-er72.onrender.com/history?sort=${sort}&limit=${limit}`)
         .then((res) => res.json())
         .then((data) => setHistory(data.history || []))
         .catch(() => {});
