@@ -31,6 +31,8 @@ from transcript import fetch_transcript
 
 from analysis import analyze_transcript
 
+from prices import get_stock_returns
+
 # tells SQLAlcehmy to look at all models (python classes) and create the corresponding tables in Postgres if they dont exist yet
 # just a sfety net to keep models and DB in sync in case one is changed and forget to update the other (so Python and SQL schema always matching)
 models.Base.metadata.create_all(bind=engine)
@@ -84,11 +86,19 @@ def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
                 "opportunities": json.loads(existing_analysis.opportunities)
             }
             
+            # Deserialize daily_prices if available
+            daily_prices = []
+            if existing_analysis.daily_prices:
+                daily_prices = json.loads(existing_analysis.daily_prices)
+            
             return {
                 "ticker": request.ticker.upper(),
                 "year": request.year,
                 "quarter": request.quarter,
                 "analysis": cached_result,
+                "return_1day": existing_analysis.return_1day,
+                "return_5day": existing_analysis.return_5day,
+                "daily_prices": daily_prices,
                 "cached": True
             }
     
@@ -110,6 +120,9 @@ def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
     
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
+
+    # Fetch stock returns (1-day and 5-day after earnings)
+    stock_returns = get_stock_returns(request.ticker, request.year, request.quarter)
 
     # request.ticker, request.year, request.quarter come from the API request
     # transcript["content"] is the raw text fetched from defeatbeta
@@ -139,7 +152,10 @@ def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
         key_claims=json.dumps(result.get("key_claims", [])),
         red_flags=json.dumps(result.get("red_flags", [])),
         opportunities=json.dumps(result.get("opportunities", [])),
-        sentiment_score=result.get("sentiment_score")
+        sentiment_score=result.get("sentiment_score"),
+        return_1day=stock_returns.get("return_1day"),
+        return_5day=stock_returns.get("return_5day"),
+        daily_prices=json.dumps(stock_returns.get("daily_prices", []))
     )
     
     # Stage the analysis to be saved
@@ -153,5 +169,8 @@ def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
         "year": request.year,
         "quarter": request.quarter,
         "analysis": result,
+        "return_1day": stock_returns.get("return_1day"),
+        "return_5day": stock_returns.get("return_5day"),
+        "daily_prices": stock_returns.get("daily_prices", []),
         "cached": False
     }

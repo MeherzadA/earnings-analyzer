@@ -8,3 +8,4 @@ requests
 duckdb
 google-genai
 defeatbeta-api
+yfinance

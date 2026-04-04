@@ -61,6 +61,10 @@ class Analysis(Base):
 
     sentiment_score = Column(Float)
     opportunities = Column(Text)
+    
+    return_1day = Column(Float, nullable=True)
+    return_5day = Column(Float, nullable=True)
+    daily_prices = Column(Text, nullable=True)
 
     transcript = relationship("Transcript", back_populates="analyses")
     user = relationship("User", back_populates="analyses")

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const API_URL = "http://127.0.0.1:8000/analyze";
 
@@ -67,6 +68,84 @@ function SearchBar({ onSubmit, loading }) {
         )}
       </button>
     </form>
+  );
+}
+
+function StockPriceChart({ dailyPrices, ticker }) {
+  if (!dailyPrices || dailyPrices.length === 0) {
+    return null;
+  }
+
+  // Transform for Recharts: needs {label, price}
+  const chartData = dailyPrices.map((item) => ({
+    label: item.label || item.date,
+    price: item.price,
+  }));
+
+  const minPrice = Math.min(...chartData.map(d => d.price));
+  const maxPrice = Math.max(...chartData.map(d => d.price));
+  const range = maxPrice - minPrice;
+  const padding = range * 0.1; // 10% padding
+
+  return (
+    <div className="card chart-card">
+      <p className="card-label">Stock Price Movement</p>
+      <p className="chart-title">{ticker} Post-Earnings</p>
+      
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart
+          data={chartData}
+          margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#e4e7ec" />
+          <XAxis
+            dataKey="label"
+            stroke="#6b7280"
+            style={{ fontSize: "12px" }}
+          />
+          <YAxis
+            stroke="#6b7280"
+            style={{ fontSize: "12px" }}
+            domain={[minPrice - padding, maxPrice + padding]}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "rgba(255,255,255,0.95)",
+              border: "1px solid #e4e7ec",
+              borderRadius: "8px",
+              padding: "8px",
+            }}
+            formatter={(value) => `$${value.toFixed(2)}`}
+            labelStyle={{ color: "#0f1117" }}
+          />
+          <Legend />
+          <Line
+            type="monotone"
+            dataKey="price"
+            stroke="#0f62fe"
+            dot={{ fill: "#0f62fe", r: 5 }}
+            activeDot={{ r: 7 }}
+            isAnimationActive={true}
+            name="Close Price"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+
+      <div className="chart-stats">
+        <div className="stat">
+          <span className="label">Earnings Date</span>
+          <span className="value">${chartData[0]?.price.toFixed(2)}</span>
+        </div>
+        <div className="stat">
+          <span className="label">Day 1</span>
+          <span className="value">${chartData[1]?.price.toFixed(2)}</span>
+        </div>
+        <div className="stat">
+          <span className="label">Day 5</span>
+          <span className="value">${chartData[5]?.price.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -255,6 +334,12 @@ export default function App() {
                 cached={result.cached}
               />
             </div>
+            {result.daily_prices && result.daily_prices.length > 0 && (
+              <StockPriceChart
+                dailyPrices={result.daily_prices}
+                ticker={result.ticker}
+              />
+            )}
             <TabsSection
               keyClaims={result.analysis?.key_claims}
               redFlags={result.analysis?.red_flags}

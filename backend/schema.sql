@@ -68,6 +68,9 @@ CREATE TABLE analyses (
     summary TEXT,
     sentiment_score FLOAT,
     opportunities TEXT,
+    return_1day FLOAT,
+    return_5day FLOAT,
+    daily_prices TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
