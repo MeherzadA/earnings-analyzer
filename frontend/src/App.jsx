@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const API_URL = "http://127.0.0.1:8000/analyze";
@@ -254,18 +254,172 @@ function EmptyState() {
   return (
     <div className="empty-state">
       <div className="empty-icon">📊</div>
-      <p className="empty-title">Enter a ticker to begin</p>
+      <p className="empty-title">Enter a ticker from the NYSE to begin</p>
       <p className="empty-sub">
-        Fetch and analyze earnings call transcripts powered by Gemini AI.
+        Get a full analysis of earnings call transcripts (powered by Gemini)
       </p>
     </div>
   );
 }
 
+function HistoryFeed({ history, onSelect, sort, setSort, limit, setLimit, total }) {
+  if (!history.length) return null;
+
+  const filters = [
+    { id: "recent",  label: "Recent" },
+    { id: "movers",  label: "Largest Movement" },
+    { id: "gains",   label: "Top Gains" },
+    { id: "drops",   label: "Biggest Drops" },
+  ];
+
+  return (
+    <div className="history-section">
+      <div className="history-header">
+        <p className="history-title">Stocks Recently Analyzed by Users</p>
+        <div className="history-filters">
+          {filters.map((f) => (
+            <button
+              key={f.id}
+              className={`filter-btn ${sort === f.id ? "filter-active" : ""}`}
+              onClick={() => setSort(f.id)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="history-list">
+        {history.map((item, i) => {
+          const r1 = item.return_1day;
+          const positiveReturn = r1 !== null && r1 > 0;
+          const negativeReturn = r1 !== null && r1 < 0;
+          const sentimentColor =
+            item.sentiment === "positive"
+              ? "#16a34a"
+              : item.sentiment === "negative"
+              ? "#dc2626"
+              : "#6b7280";
+
+          return (
+            <div
+              className="history-row"
+              key={i}
+              onClick={() => onSelect(item)}
+            >
+              <div className="history-left">
+                <span className="history-ticker">{item.ticker}</span>
+                <span className="history-period">
+                  Q{item.quarter} {item.year}
+                </span>
+              </div>
+
+              <div className="history-mid">
+                <span
+                  className="history-sentiment"
+                  style={{ color: sentimentColor }}
+                >
+                  {item.sentiment
+                    ? item.sentiment.charAt(0).toUpperCase() +
+                      item.sentiment.slice(1)
+                    : "—"}
+                </span>
+                {item.sentiment_score != null && (
+                  <div className="history-score-track">
+                    <div
+                      className="history-score-fill"
+                      style={{
+                        width: `${((item.sentiment_score + 1) / 2) * 100}%`,
+                        background: sentimentColor,
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="history-right">
+                {r1 !== null ? (
+                  <span
+                    className="history-return"
+                    style={{
+                      color: positiveReturn
+                        ? "#16a34a"
+                        : negativeReturn
+                        ? "#dc2626"
+                        : "#6b7280",
+                    }}
+                  >
+                    {positiveReturn ? "+" : ""}
+                    {r1.toFixed(2)}% <span className="return-label">1d</span>
+                  </span>
+                ) : (
+                  <span className="history-return-na">—</span>
+                )}
+                {item.return_5day !== null ? (
+                  <span
+                    className="history-return"
+                    style={{
+                      color:
+                        item.return_5day > 0
+                          ? "#16a34a"
+                          : item.return_5day < 0
+                          ? "#dc2626"
+                          : "#6b7280",
+                    }}
+                  >
+                    {item.return_5day > 0 ? "+" : ""}
+                    {item.return_5day.toFixed(2)}%{" "}
+                    <span className="return-label">5d</span>
+                  </span>
+                ) : (
+                  <span className="history-return-na">—</span>
+                )}
+              </div>
+
+              <div className="history-arrow">→</div>
+            </div>
+          );
+        })}
+        {history.length < total && (
+          <button 
+            className="show-more-btn"
+            onClick={() => setLimit(limit + 20)}
+          >
+            Show more ({total - history.length} remaining)
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
 export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+
+  const [history, setHistory] = useState([]);
+  const [sort, setSort] = useState("recent");
+
+  const [limit, setLimit] = useState(20);
+
+  const [total, setTotal] = useState(0);
+
+  function handleSortChange(newSort) {
+    setSort(newSort);
+    setLimit(20);
+}
+
+  useEffect(() => {
+    fetch(`http://127.0.0.1:8000/history?sort=${sort}&limit=${limit}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setHistory(data.history || []);
+          setTotal(data.total || 0);
+        })
+        .catch(() => {});
+  }, [sort, limit]);
 
   async function handleSubmit({ ticker, year, quarter }) {
     setError("");
@@ -280,6 +434,12 @@ export default function App() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || "Request failed");
       setResult(data);
+
+      fetch(`http://127.0.0.1:8000/history?sort=${sort}`)
+        .then((res) => res.json())
+        .then((data) => setHistory(data.history || []))
+        .catch(() => {});
+
     } catch (err) {
       setError(err.message || "Something went wrong.");
     } finally {
@@ -287,13 +447,23 @@ export default function App() {
     }
   }
 
+  function handleHistoryClick(item) {
+    handleSubmit({
+        ticker: item.ticker,
+        year: item.year,
+        quarter: Number(item.quarter),
+    });
+ }
+
+
+
   return (
     <div className="app">
       <header className="app-header">
         <div className="header-inner">
           <div className="brand">
-            <span className="brand-mark">EA</span>
-            <span className="brand-name">Earnings Analyzer</span>
+            {/* <span className="brand-mark">E</span> */}
+            <span className="brand-name">Earnings Call Analyzer</span>
           </div>
         </div>
       </header>
@@ -302,13 +472,18 @@ export default function App() {
         <div className="search-section">
           <h1 className="hero-title">Earnings Call Intelligence</h1>
           <p className="hero-sub">
-            AI-powered analysis of earnings transcripts — sentiment, key claims, risks, and opportunities.
+            AI-powered analysis of earnings call transcripts from companies listed on the NYSE 
           </p>
           <SearchBar onSubmit={handleSubmit} loading={loading} />
           {error && <div className="error-banner">{error}</div>}
         </div>
 
-        {!result && !loading && <EmptyState />}
+        {!result && !loading && (
+          <>
+            <EmptyState />
+            <HistoryFeed history={history} onSelect={handleHistoryClick} sort={sort} setSort={handleSortChange} limit={limit} setLimit={setLimit} total={total} />
+          </>
+        )}
 
         {loading && (
           <div className="loading-state">
@@ -320,7 +495,13 @@ export default function App() {
         )}
 
         {result && (
-          <div className="results">
+            <div className="results">
+                <button 
+                    className="back-btn"
+                    onClick={() => setResult(null)}
+                >
+                    ← Back
+                </button>
             <div className="top-row">
               <SentimentCard
                 sentiment={result.analysis?.sentiment}
