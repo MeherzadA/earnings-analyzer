@@ -127,6 +127,7 @@ def calculate_returns(ticker: str, earnings_date: str) -> dict:
         earnings_date_close = None
         if earnings_date in close_prices.index.strftime("%Y-%m-%d").values:
             earnings_date_close = float(close_prices.loc[earnings_date])
+            print(f"DEBUG earnings_date_close type: {type(earnings_date_close)}, value: {earnings_date_close}")
         else:
             # If exact date not found, find the most recent date before or on earnings_date
             valid_dates = close_prices.index[close_prices.index <= earnings_date_obj]
