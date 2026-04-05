@@ -6,7 +6,26 @@ and post-earnings stock price reaction.
 
 **Live:** [earnings-analyzer-vercel2.vercel.app](https://earnings-analyzer-vercel2.vercel.app)
 
-![Earnings Analyzer Screenshot](<img width="1859" height="993" alt="image" src="https://github.com/user-attachments/assets/38ddd088-d72e-4bbf-a918-727544536aac" />)
+
+<div align="center">
+  <img width="1859" alt="Homepage" src="https://github.com/user-attachments/assets/38ddd088-d72e-4bbf-a918-727544536aac"/>
+</div>
+
+<br/>
+
+<div align="center">
+  <img width="420" height="816" alt="image" src="https://github.com/user-attachments/assets/2fe1f565-307a-44dd-aa11-fc5a8fe8950f" />
+  <img width="400" alt="Key Claims" src="https://github.com/user-attachments/assets/56ba0e40-4614-49b8-a502-b3a6d76c90b3" />
+</div>
+
+<div align="center">
+  <img width="406" alt="Opportunities" src="https://github.com/user-attachments/assets/43ce812d-f2f3-486c-af75-59ebc60ae5c9" />
+</div>
+
+
+
+
+
 
 ## What it does
 
@@ -46,7 +65,7 @@ npm run dev
 ```
 
 ## Features
-- AI analysis of any earnings call from 2005 to present
+- AI analysis of any NYSE-listed company on with a publicly available transcript
 - Sentiment scoring with visual bar
 - Post-earnings stock price chart (earnings date + 5 trading days)
 - Cached analyses with sort by recency, largest movement, top gainers, biggest drops
