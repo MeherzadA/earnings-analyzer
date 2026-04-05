@@ -563,7 +563,12 @@ export default function App() {
             <div className="loading-bar">
               <div className="loading-fill" />
             </div>
-            <p className="loading-text">Fetching transcript and running analysis…</p>
+            <p className="loading-text">
+                Fetching transcript and running analysis… <br/>
+                <span style={{ fontSize: "12px", opacity: 0.7 }}>
+                    First request may take up to 60 seconds if the server is waking up.
+                </span>
+            </p>
           </div>
         )}
 
