@@ -175,8 +175,11 @@ function StockPriceChart({ dailyPrices, ticker }) {
           <YAxis
             stroke="#6b7280"
             style={{ fontSize: "12px" }}
-            domain={[minPrice - padding, maxPrice + padding]}
-            tickFormatter={(value) => `$${value.toFixed(0)}`}
+            domain={[
+              (dataMin) => Math.floor(dataMin * 0.99),
+              (dataMax) => Math.ceil(dataMax * 1.01)
+            ]}
+            tickFormatter={(value) => `$${Number(value).toFixed(0)}`}
           />
           <Tooltip
             contentStyle={{
