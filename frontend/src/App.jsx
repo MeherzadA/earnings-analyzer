@@ -154,7 +154,7 @@ function StockPriceChart({ dailyPrices, ticker }) {
   const minPrice = Math.min(...chartData.map(d => d.price));
   const maxPrice = Math.max(...chartData.map(d => d.price));
   const range = maxPrice - minPrice;
-  const padding = range * 0.1; // 10% padding
+  const padding = Math.max(range * 0.1, 1);
 
   return (
     <div className="card chart-card">
@@ -176,6 +176,7 @@ function StockPriceChart({ dailyPrices, ticker }) {
             stroke="#6b7280"
             style={{ fontSize: "12px" }}
             domain={[minPrice - padding, maxPrice + padding]}
+            tickFormatter={(value) => `$${value.toFixed(0)}`}
           />
           <Tooltip
             contentStyle={{
